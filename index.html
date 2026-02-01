@@ -110,8 +110,20 @@
     /* Input focus ring */
     input:focus, select:focus, textarea:focus { outline: none; border-color: #778A5E !important; }
 
+    /* Mobile-friendly inputs for larger text */
+    input, select, textarea, button {
+      font-size: 16px; /* Prevents iOS zoom on focus */
+      min-height: 44px; /* Apple's minimum touch target */
+    }
+
     /* Safe area for notch devices */
     .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 16px); }
+
+    /* Better text scaling */
+    @media (max-width: 380px) {
+      .text-xs { font-size: 0.7rem; }
+      .text-sm { font-size: 0.8rem; }
+    }
 
     /* Tab transition */
     .tab-content { display: none; }
@@ -134,29 +146,25 @@
   <div id="app" class="flex flex-col min-h-screen">
 
     <!-- Header -->
-    <header class="bg-void-dark border-b border-ash px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-      <div class="flex items-center gap-3">
+    <header class="bg-void-dark border-b border-ash px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between sticky top-0 z-50 gap-2 min-h-[48px]">
+      <div class="flex items-center gap-2 min-w-0 flex-shrink-0">
         <!-- Light/Dark Toggle -->
-        <button @click="toggleTheme" class="text-ash hover:text-clay text-sm" :title="isDark ? 'Switch to Light' : 'Switch to Dark'">
+        <button @click="toggleTheme" class="text-ash hover:text-clay p-1" :title="isDark ? 'Switch to Light' : 'Switch to Dark'">
           {{ isDark ? '[*]' : '[o]' }}
         </button>
-        <div class="flex items-center gap-1">
-          <span class="text-moss text-sm">[</span>
-          <span class="text-clay font-bold">Backyard</span>
-          <span class="text-moss text-sm">]</span>
-        </div>
+        <span class="text-clay font-bold text-sm sm:text-base truncate">Backyard</span>
       </div>
-      <div class="flex items-center gap-3">
-        <span v-if="isOnline" class="text-moss text-xs flex items-center gap-1">
-          <span class="w-2 h-2 bg-moss rounded-full animate-pulse"></span>
-          SYNC
+      <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-shrink">
+        <span v-if="isOnline" class="text-moss text-xs flex items-center gap-1 flex-shrink-0">
+          <span class="w-2 h-2 bg-moss rounded-full animate-pulse flex-shrink-0"></span>
+          <span class="hidden sm:inline">SYNC</span>
         </span>
-        <span v-else class="text-rust text-xs flex items-center gap-1">
-          <span class="w-2 h-2 bg-rust rounded-full"></span>
-          OFFLINE
+        <span v-else class="text-rust text-xs flex items-center gap-1 flex-shrink-0">
+          <span class="w-2 h-2 bg-rust rounded-full flex-shrink-0"></span>
+          <span class="hidden sm:inline">OFFLINE</span>
         </span>
-        <span v-if="authenticated" class="text-clay text-xs">hello yd / shiaoyu</span>
-        <button @click="logout" class="text-ash text-xs hover:text-rust">[LOGOUT]</button>
+        <span v-if="authenticated" class="text-clay text-xs truncate hidden xs:inline">hi yd/shiaoyu</span>
+        <button @click="logout" class="text-ash text-xs hover:text-rust flex-shrink-0 p-1">[X]</button>
       </div>
     </header>
 
@@ -213,21 +221,21 @@
             :key="idx"
             @click="selectedDate = date"
             :class="[
-              'px-3 py-2 border text-sm whitespace-nowrap transition-colors',
+              'px-2 sm:px-3 py-2 border text-sm whitespace-nowrap transition-colors min-h-[44px]',
               selectedDate === date ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-clay'
             ]"
           >
             {{ formatDateShort(date) }}
           </button>
-          <button @click="showDatePicker = true" class="px-3 py-2 border border-dashed border-ash text-ash hover:border-moss hover:text-moss">
+          <button @click="showDatePicker = true" class="px-2 sm:px-3 py-2 border border-dashed border-ash text-ash hover:border-moss hover:text-moss min-h-[44px]">
             [+]
           </button>
         </div>
 
         <!-- Day Title -->
-        <div class="border-b border-ash pb-2 mb-4 flex justify-between items-center">
-          <span class="text-clay">{{ formatDateFull(selectedDate) }}</span>
-          <button @click="addActivity" class="text-moss text-sm hover:underline">[+ ADD]</button>
+        <div class="border-b border-ash pb-2 mb-4 flex flex-wrap justify-between items-center gap-2">
+          <span class="text-clay text-sm sm:text-base truncate">{{ formatDateFull(selectedDate) }}</span>
+          <button @click="addActivity" class="text-moss text-sm hover:underline flex-shrink-0">[+ ADD]</button>
         </div>
 
         <!-- Activities List -->
@@ -343,12 +351,12 @@
           :key="tab.id"
           @click="activeTab = tab.id"
           :class="[
-            'flex-1 py-4 text-center transition-colors',
+            'flex-1 py-3 sm:py-4 text-center transition-colors min-h-[56px]',
             activeTab === tab.id ? 'text-moss bg-void' : 'text-ash hover:text-paper'
           ]"
         >
-          <div class="text-lg">{{ tab.icon }}</div>
-          <div class="text-xs mt-1">{{ tab.label }}</div>
+          <div class="text-base sm:text-lg">{{ tab.icon }}</div>
+          <div class="text-xs">{{ tab.label }}</div>
         </button>
       </div>
     </nav>
@@ -472,13 +480,13 @@
           </div>
           <div>
             <label class="block text-ash text-sm mb-1">PAID BY</label>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <button
                 v-for="member in tripMembers"
                 :key="member"
                 @click="expenseForm.payer = member"
                 :class="[
-                  'flex-1 border px-3 py-2 transition-colors',
+                  'flex-1 min-w-[80px] border px-3 py-3 transition-colors text-sm',
                   expenseForm.payer === member ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-paper'
                 ]"
               >{{ member }}</button>
@@ -486,13 +494,13 @@
           </div>
           <div>
             <label class="block text-ash text-sm mb-1">SPLIT BETWEEN</label>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <button
                 v-for="member in tripMembers"
                 :key="member"
                 @click="toggleSplit(member)"
                 :class="[
-                  'flex-1 border px-3 py-2 transition-colors',
+                  'flex-1 min-w-[80px] border px-3 py-3 transition-colors text-sm',
                   expenseForm.splitBetween.includes(member) ? 'border-clay bg-clay text-void' : 'border-ash text-ash hover:border-paper'
                 ]"
               >{{ member }}</button>
@@ -892,13 +900,8 @@
             expenses.value = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
           });
 
-          // Listen for members
-          tripRef.child('members').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-              tripMembers.value = Object.values(data);
-            }
-          });
+          // Members are fixed: yd and shiaoyu only
+          // (not loaded from Firebase)
         };
 
         const formatDateShort = (dateStr) => {
