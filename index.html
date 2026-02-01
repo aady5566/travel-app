@@ -353,7 +353,7 @@
                   type="text"
                   class="flex-1 bg-void-dark border border-ash text-paper px-3 py-2"
                   placeholder="Search place in Japan..."
-                  @input="searchPlaces"
+                  @input="searchPlacesDebounced"
                   @keyup.enter="searchPlaces"
                 >
                 <button
@@ -927,37 +927,45 @@
         };
 
         // Place search using OpenStreetMap Nominatim (free, no API key)
-        const searchPlaces = async () => {
+        const doSearch = async () => {
           const query = placeSearch.value.trim();
           if (!query || query.length < 2) {
             placeResults.value = [];
             return;
           }
 
-          // Debounce
-          if (searchTimeout) clearTimeout(searchTimeout);
-          searchTimeout = setTimeout(async () => {
-            searchingPlace.value = true;
-            try {
-              // Search in Japan with Nominatim
-              const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Japan')}&limit=5&addressdetails=1`;
-              const response = await fetch(url, {
-                headers: { 'Accept-Language': 'en,ja' }
-              });
-              const data = await response.json();
+          searchingPlace.value = true;
+          try {
+            // Search in Japan with Nominatim
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Japan')}&limit=5&addressdetails=1`;
+            const response = await fetch(url, {
+              headers: { 'Accept-Language': 'en,ja' }
+            });
+            const data = await response.json();
 
-              placeResults.value = data.map(item => ({
-                name: item.name || item.display_name.split(',')[0],
-                address: item.display_name,
-                lat: parseFloat(item.lat),
-                lng: parseFloat(item.lon)
-              }));
-            } catch (e) {
-              console.error('Place search failed:', e);
-              placeResults.value = [];
-            }
-            searchingPlace.value = false;
-          }, 300);
+            placeResults.value = data.map(item => ({
+              name: item.name || item.display_name.split(',')[0],
+              address: item.display_name,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon)
+            }));
+          } catch (e) {
+            console.error('Place search failed:', e);
+            placeResults.value = [];
+          }
+          searchingPlace.value = false;
+        };
+
+        // Debounced search for typing
+        const searchPlacesDebounced = () => {
+          if (searchTimeout) clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(doSearch, 500);
+        };
+
+        // Immediate search for button click
+        const searchPlaces = () => {
+          if (searchTimeout) clearTimeout(searchTimeout);
+          doSearch();
         };
 
         const selectPlace = (place) => {
@@ -1104,6 +1112,7 @@
           deleteExpense,
           toggleSplit,
           searchPlaces,
+          searchPlacesDebounced,
           selectPlace,
           clearLocation,
           navigateTo
