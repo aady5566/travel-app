@@ -352,7 +352,7 @@
                   v-model="placeSearch"
                   type="text"
                   class="flex-1 bg-void-dark border border-ash text-paper px-3 py-2"
-                  placeholder="Search place in Japan..."
+                  placeholder="搜尋地點 / Search place..."
                   @input="searchPlacesDebounced"
                   @keyup.enter="searchPlaces"
                 >
@@ -927,6 +927,8 @@
         };
 
         // Place search using OpenStreetMap Nominatim (free, no API key)
+        // Supports: Traditional Chinese, Japanese, English, any language
+        // No location restriction - search worldwide
         const doSearch = async () => {
           const query = placeSearch.value.trim();
           if (!query || query.length < 2) {
@@ -936,10 +938,10 @@
 
           searchingPlace.value = true;
           try {
-            // Search in Japan with Nominatim
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Japan')}&limit=5&addressdetails=1`;
+            // Search worldwide with Nominatim (supports Chinese, Japanese, etc.)
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`;
             const response = await fetch(url, {
-              headers: { 'Accept-Language': 'en,ja' }
+              headers: { 'Accept-Language': 'zh-TW,ja,en' }  // Prefer Traditional Chinese, Japanese, English
             });
             const data = await response.json();
 
