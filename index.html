@@ -16,8 +16,6 @@
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <script>
     tailwind.config = {
@@ -79,12 +77,6 @@
       pointer-events: none;
       z-index: 10;
     }
-
-    /* Map styles */
-    #map { z-index: 1; }
-    .leaflet-container { background: #121417; font-family: 'Fira Code', monospace; }
-    .leaflet-popup-content-wrapper { background: #1A1D21; color: #EBE5CE; border: 1px solid #6B7280; border-radius: 2px; }
-    .leaflet-popup-tip { background: #1A1D21; border: 1px solid #6B7280; }
 
     /* Input focus ring */
     input:focus, select:focus, textarea:focus { outline: none; border-color: #778A5E !important; }
@@ -305,26 +297,6 @@
         </div>
       </div>
 
-      <!-- Map Tab -->
-      <div v-else-if="activeTab === 'map'" class="tab-content active">
-        <div id="map" class="w-full" style="height: calc(100vh - 140px);"></div>
-        <div class="absolute bottom-24 left-4 right-4 z-20">
-          <div class="bg-void-dark border border-ash p-3">
-            <div class="text-ash text-xs mb-2">[TODAY_LOCATIONS] {{ dayActivities.filter(a => a.lat).length }} points</div>
-            <div class="flex gap-2 overflow-x-auto pb-1">
-              <button
-                v-for="activity in dayActivities.filter(a => a.lat)"
-                :key="activity.id"
-                @click="focusLocation(activity)"
-                class="px-2 py-1 border border-ash text-paper text-xs whitespace-nowrap hover:border-moss"
-              >
-                {{ activity.time }} {{ activity.title }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </main>
 
     <!-- Bottom Navigation -->
@@ -374,16 +346,54 @@
           </div>
           <div>
             <label class="block text-ash text-sm mb-1">LOCATION</label>
-            <input v-model="activityForm.location" type="text" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="Place name or address...">
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-ash text-sm mb-1">LAT</label>
-              <input v-model.number="activityForm.lat" type="number" step="any" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="35.6762">
+            <div class="relative">
+              <div class="flex gap-2">
+                <input
+                  v-model="placeSearch"
+                  type="text"
+                  class="flex-1 bg-void-dark border border-ash text-paper px-3 py-2"
+                  placeholder="Search place in Japan..."
+                  @input="searchPlaces"
+                  @keyup.enter="searchPlaces"
+                >
+                <button
+                  @click="searchPlaces"
+                  :disabled="searchingPlace"
+                  class="border border-moss text-moss px-3 hover:bg-moss hover:text-void transition-colors"
+                >
+                  {{ searchingPlace ? '...' : '[Q]' }}
+                </button>
+              </div>
+              <!-- Search Results Dropdown -->
+              <div v-if="placeResults.length > 0" class="absolute z-10 w-full mt-1 bg-void-dark border border-ash max-h-48 overflow-y-auto">
+                <button
+                  v-for="(place, idx) in placeResults"
+                  :key="idx"
+                  @click="selectPlace(place)"
+                  class="w-full text-left px-3 py-2 hover:bg-moss/20 border-b border-ash/50 last:border-b-0"
+                >
+                  <div class="text-paper text-sm truncate">{{ place.name }}</div>
+                  <div class="text-ash text-xs truncate">{{ place.address }}</div>
+                </button>
+              </div>
             </div>
-            <div>
-              <label class="block text-ash text-sm mb-1">LNG</label>
-              <input v-model.number="activityForm.lng" type="number" step="any" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="139.6503">
+            <!-- Selected Location Display -->
+            <div v-if="activityForm.location" class="mt-2 p-2 bg-void border border-dashed border-ash">
+              <div class="flex justify-between items-start">
+                <div class="flex-1">
+                  <div class="text-clay text-sm">{{ activityForm.location }}</div>
+                  <div v-if="activityForm.lat && activityForm.lng" class="text-ash text-xs mt-1">
+                    {{ activityForm.lat.toFixed(4) }}, {{ activityForm.lng.toFixed(4) }}
+                  </div>
+                </div>
+                <button @click="clearLocation" class="text-ash hover:text-rust text-xs ml-2">[X]</button>
+              </div>
+              <a
+                v-if="activityForm.lat && activityForm.lng"
+                :href="'https://www.google.com/maps?q=' + activityForm.lat + ',' + activityForm.lng"
+                target="_blank"
+                class="text-moss text-xs hover:underline mt-1 inline-block"
+              >[View on Google Maps]</a>
             </div>
           </div>
           <div>
@@ -485,8 +495,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
 
-  <!-- Leaflet -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     // Firebase Configuration
@@ -627,7 +635,6 @@
         const tabs = [
           { id: 'itinerary', label: 'PLAN', icon: '[]' },
           { id: 'expense', label: 'BILL', icon: '$$' },
-          { id: 'map', label: 'MAP', icon: '<>' },
         ];
 
         // Trip Data
@@ -664,9 +671,11 @@
           date: new Date().toISOString().split('T')[0]
         });
 
-        // Map
-        let map = null;
-        let markers = [];
+        // Place Search
+        const placeSearch = ref('');
+        const placeResults = ref([]);
+        const searchingPlace = ref(false);
+        let searchTimeout = null;
 
         // Computed
         const dayActivities = computed(() => {
@@ -913,6 +922,56 @@
         const closeActivityForm = () => {
           showActivityForm.value = false;
           editingActivity.value = null;
+          placeSearch.value = '';
+          placeResults.value = [];
+        };
+
+        // Place search using OpenStreetMap Nominatim (free, no API key)
+        const searchPlaces = async () => {
+          const query = placeSearch.value.trim();
+          if (!query || query.length < 2) {
+            placeResults.value = [];
+            return;
+          }
+
+          // Debounce
+          if (searchTimeout) clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(async () => {
+            searchingPlace.value = true;
+            try {
+              // Search in Japan with Nominatim
+              const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Japan')}&limit=5&addressdetails=1`;
+              const response = await fetch(url, {
+                headers: { 'Accept-Language': 'en,ja' }
+              });
+              const data = await response.json();
+
+              placeResults.value = data.map(item => ({
+                name: item.name || item.display_name.split(',')[0],
+                address: item.display_name,
+                lat: parseFloat(item.lat),
+                lng: parseFloat(item.lon)
+              }));
+            } catch (e) {
+              console.error('Place search failed:', e);
+              placeResults.value = [];
+            }
+            searchingPlace.value = false;
+          }, 300);
+        };
+
+        const selectPlace = (place) => {
+          activityForm.value.location = place.name;
+          activityForm.value.lat = place.lat;
+          activityForm.value.lng = place.lng;
+          placeSearch.value = '';
+          placeResults.value = [];
+        };
+
+        const clearLocation = () => {
+          activityForm.value.location = '';
+          activityForm.value.lat = null;
+          activityForm.value.lng = null;
         };
 
         const deleteActivity = (id) => {
@@ -960,94 +1019,10 @@
           }
         };
 
-        const initMap = () => {
-          if (map) return;
-
-          map = L.map('map', {
-            zoomControl: false
-          }).setView([35.6762, 139.6503], 12); // Tokyo
-
-          L.control.zoom({ position: 'topright' }).addTo(map);
-
-          // Dark tile layer
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap © CARTO',
-            maxZoom: 19
-          }).addTo(map);
-
-          updateMapMarkers();
-        };
-
-        const updateMapMarkers = () => {
-          if (!map) return;
-
-          // Clear existing markers
-          markers.forEach(m => map.removeLayer(m));
-          markers = [];
-
-          // Add markers for today's activities
-          dayActivities.value.forEach(activity => {
-            if (activity.lat && activity.lng) {
-              const marker = L.marker([activity.lat, activity.lng], {
-                icon: L.divIcon({
-                  className: 'custom-marker',
-                  html: `<div style="background:#778A5E;color:#1A1D21;padding:4px 8px;border:1px solid #6B7280;font-family:monospace;font-size:12px;white-space:nowrap;">${activity.time || ''} ${activity.title}</div>`,
-                  iconSize: null
-                })
-              }).addTo(map);
-
-              marker.bindPopup(`
-                <div style="font-size:14px;">
-                  <strong>${activity.title}</strong><br>
-                  <span style="color:#6B7280;">${activity.time || ''}</span><br>
-                  ${activity.location || ''}
-                </div>
-              `);
-
-              markers.push(marker);
-            }
-          });
-
-          // Fit bounds if markers exist
-          if (markers.length > 0) {
-            const group = L.featureGroup(markers);
-            map.fitBounds(group.getBounds().pad(0.1));
-          }
-        };
-
-        const focusLocation = (activity) => {
-          if (map && activity.lat && activity.lng) {
-            map.setView([activity.lat, activity.lng], 16);
-          }
-        };
-
         const navigateTo = (activity) => {
           const url = `https://www.google.com/maps/dir/?api=1&destination=${activity.lat},${activity.lng}`;
           window.open(url, '_blank');
         };
-
-        // Watch for tab changes
-        watch(activeTab, (newTab) => {
-          if (newTab === 'map') {
-            nextTick(() => {
-              setTimeout(initMap, 100);
-            });
-          }
-        });
-
-        // Watch for date changes to update map
-        watch(selectedDate, () => {
-          if (activeTab.value === 'map') {
-            nextTick(updateMapMarkers);
-          }
-        });
-
-        // Watch activities for map updates
-        watch(activities, () => {
-          if (activeTab.value === 'map') {
-            nextTick(updateMapMarkers);
-          }
-        }, { deep: true });
 
         // Online/offline detection
         window.addEventListener('online', () => isOnline.value = true);
@@ -1107,6 +1082,9 @@
           newDate,
           activityForm,
           expenseForm,
+          placeSearch,
+          placeResults,
+          searchingPlace,
           dayActivities,
           sortedExpenses,
           totalExpense,
@@ -1125,7 +1103,9 @@
           saveExpense,
           deleteExpense,
           toggleSplit,
-          focusLocation,
+          searchPlaces,
+          selectPlace,
+          clearLocation,
           navigateTo
         };
       }
