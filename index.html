@@ -1056,9 +1056,16 @@
         // Init
         onMounted(async () => {
           // Check lock status on load
-          checkLockStatus();
+          const rateCheck = checkLockStatus();
           // Update lock status every 10 seconds (for countdown)
           setInterval(checkLockStatus, 10000);
+
+          // If rate-limited, don't allow auto-login
+          if (!rateCheck.allowed) {
+            localStorage.removeItem('tripId');
+            loading.value = false;
+            return;
+          }
 
           // Check for stored session
           const storedTripId = localStorage.getItem('tripId');
