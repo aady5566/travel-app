@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-TW" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -22,13 +22,18 @@
       theme: {
         extend: {
           colors: {
-            void: '#1A1D21',
-            'void-dark': '#121417',
-            rust: '#C75C5C',
-            moss: '#778A5E',
-            clay: '#E0C097',
-            ash: '#6B7280',
-            paper: '#EBE5CE',
+            // Surface colors (use CSS vars for theming)
+            void: 'var(--color-void)',
+            'void-dark': 'var(--color-void-deep)',
+            'void-elevated': 'var(--color-void-elevated)',
+            // Semantic colors
+            rust: 'var(--color-rust)',
+            moss: 'var(--color-moss)',
+            clay: 'var(--color-clay)',
+            slate: 'var(--color-slate)',
+            ash: 'var(--color-ash)',
+            dusk: 'var(--color-dusk)',
+            paper: 'var(--color-paper)',
           },
           fontFamily: {
             mono: ['Fira Code', 'monospace'],
@@ -40,46 +45,118 @@
   </script>
 
   <style>
+    /*
+     * ══════════════════════════════════════════════════════════════
+     * WABI-SABI CLI // RUSTED TERMINAL DESIGN SYSTEM v2.0
+     * ══════════════════════════════════════════════════════════════
+     */
+
+    :root {
+      /* === DARK MODE PALETTE (Default) === */
+
+      /* Primary Semantic Colors */
+      --color-rust: #C75C5C;       /* Red: danger, critical */
+      --color-moss: #778A5E;       /* Green: success, growth */
+      --color-clay: #D4B896;       /* Yellow: warning, pending */
+      --color-slate: #5E7A8A;      /* Blue: info, links */
+      --color-ash: #6B7280;        /* Grey: neutral, inactive */
+      --color-dusk: #8A6B7F;       /* Purple: special, accent */
+
+      /* Extended Tints (lighter variants) */
+      --color-rust-light: #D48080;
+      --color-moss-light: #92A579;
+      --color-clay-light: #E5CDB2;
+      --color-slate-light: #7A96A6;
+      --color-ash-light: #9CA3AF;
+      --color-dusk-light: #A68899;
+
+      /* Extended Shades (darker variants) */
+      --color-rust-dark: #9A4545;
+      --color-moss-dark: #5A6B47;
+      --color-clay-dark: #B89B70;
+      --color-slate-dark: #4A6270;
+      --color-ash-dark: #4B5563;
+      --color-dusk-dark: #6B5362;
+
+      /* Surface Colors */
+      --color-void: #1A1D21;        /* Primary background */
+      --color-void-deep: #121417;   /* Deeper inset areas */
+      --color-void-elevated: #24282E; /* Cards, elevated surfaces */
+      --color-paper: #E8E2D0;       /* Primary text */
+      --color-paper-muted: #B8B4A4; /* Secondary text */
+
+      /* Semantic Mapping */
+      --bg-primary: var(--color-void);
+      --bg-secondary: var(--color-void-deep);
+      --bg-elevated: var(--color-void-elevated);
+      --text-primary: var(--color-paper);
+      --text-secondary: var(--color-paper-muted);
+      --text-muted: var(--color-ash);
+      --border-default: var(--color-ash-dark);
+      --border-focus: var(--color-moss);
+    }
+
+    /* === LIGHT MODE PALETTE === */
+    [data-theme="light"] {
+      /* Semantic colors - adjusted for light backgrounds */
+      --color-rust: #A84848;
+      --color-moss: #5E7248;
+      --color-clay: #9A7B4A;
+      --color-slate: #4A6878;
+      --color-ash: #6B7280;
+      --color-dusk: #7A5A6E;
+
+      /* Extended Tints */
+      --color-rust-light: #C06060;
+      --color-moss-light: #768A60;
+      --color-clay-light: #B89660;
+      --color-slate-light: #628A9A;
+      --color-ash-light: #9CA3AF;
+      --color-dusk-light: #9A7888;
+
+      /* Extended Shades */
+      --color-rust-dark: #8A3838;
+      --color-moss-dark: #4A5A38;
+      --color-clay-dark: #7A6038;
+      --color-slate-dark: #3A5260;
+      --color-ash-dark: #4B5563;
+      --color-dusk-dark: #5A4250;
+
+      /* Surface Colors - warm parchment tones */
+      --color-void: #F5F2E8;         /* Aged paper background */
+      --color-void-deep: #EBE6D8;    /* Slightly darker insets */
+      --color-void-elevated: #FFFDF5; /* Cards, elevated (brighter) */
+      --color-paper: #2D3136;        /* Dark charcoal text */
+      --color-paper-muted: #5A5D63;  /* Secondary text */
+
+      /* Semantic remapping for light mode */
+      --bg-primary: var(--color-void);
+      --bg-secondary: var(--color-void-deep);
+      --bg-elevated: var(--color-void-elevated);
+      --text-primary: var(--color-paper);
+      --text-secondary: var(--color-paper-muted);
+      --text-muted: var(--color-ash);
+      --border-default: #C4BBA8;
+      --border-focus: var(--color-moss);
+    }
+
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     body {
-      background-color: #1A1D21;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-      transition: background-color 0.3s, color 0.3s;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* Light Mode - Wabi-Sabi style (warm paper tones) */
-    body.light {
-      background-color: #F5F0E6;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-    }
-    body.light { --c-void: #F5F0E6; --c-void-dark: #EBE5D6; --c-paper: #2A2D31; --c-ash: #7A7A7A; }
-    body.light .bg-void { background-color: #F5F0E6 !important; }
-    body.light .bg-void-dark { background-color: #EBE5D6 !important; }
-    body.light .bg-void\/80 { background-color: rgba(245,240,230,0.8) !important; }
-    body.light .text-paper { color: #2A2D31 !important; }
-    body.light .text-ash { color: #6A6A6A !important; }
-    body.light .text-clay { color: #8B6914 !important; }
-    body.light .text-moss { color: #4A6B3A !important; }
-    body.light .text-rust { color: #A34545 !important; }
-    body.light .border-ash { border-color: #C5C0B5 !important; }
-    body.light .bg-black\/80 { background-color: rgba(0,0,0,0.6) !important; }
-    body.light .bg-black\/20 { background-color: rgba(0,0,0,0.05) !important; }
-    body.light .bg-moss { background-color: #4A6B3A !important; }
-    body.light .bg-moss\/20 { background-color: rgba(74,107,58,0.2) !important; }
-    body.light .bg-clay { background-color: #C9A227 !important; }
-    body.light .bg-clay\/10 { background-color: rgba(201,162,39,0.1) !important; }
-    body.light input, body.light select, body.light textarea {
-      background-color: #FDFBF7 !important;
-      color: #2A2D31 !important;
+    [data-theme="light"] body {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
     }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #121417; }
-    ::-webkit-scrollbar-thumb { background: #6B7280; border-radius: 3px; }
-    body.light::-webkit-scrollbar-track { background: #EBE5D6; }
-    body.light::-webkit-scrollbar-thumb { background: #A5A095; }
+    ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+    ::-webkit-scrollbar-thumb { background: var(--color-ash); border-radius: 3px; }
 
     /* Button press effect */
     .btn-cli:active { transform: translate(1px, 1px); }
@@ -107,8 +184,22 @@
       z-index: 10;
     }
 
-    /* Input focus ring */
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #778A5E !important; }
+    /* Input styles */
+    input, select, textarea {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+      border-color: var(--border-default);
+      transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--border-focus) !important; }
+
+    /* Filled button text - always readable on colored backgrounds */
+    .text-on-fill { color: #F5F2E8 !important; }
+    [data-theme="light"] .text-on-fill { color: #FFFDF5 !important; }
+
+    /* Moss-filled buttons need light text in both themes */
+    .bg-moss, .hover\:bg-moss:hover { color: #F5F2E8; }
+    [data-theme="light"] .bg-moss, [data-theme="light"] .hover\:bg-moss:hover { color: #FFFDF5; }
 
     /* Mobile-friendly inputs for larger text */
     input, select, textarea, button {
@@ -163,7 +254,8 @@
           <span class="w-2 h-2 bg-rust rounded-full flex-shrink-0"></span>
           <span class="hidden sm:inline">OFFLINE</span>
         </span>
-        <span v-if="authenticated" class="text-clay text-xs truncate hidden xs:inline">hi yd/shiaoyu</span>
+        <span v-if="authenticated" class="text-clay text-xs truncate">hi yd/shiaoyu</span>
+        <button v-if="authenticated" @click="showBackupModal = true" class="text-slate text-xs hover:text-clay flex-shrink-0 p-1 border border-slate px-1" title="Backup">[B]</button>
         <button @click="logout" class="text-ash text-xs hover:text-rust flex-shrink-0 p-1">[X]</button>
       </div>
     </header>
@@ -222,7 +314,7 @@
             @click="selectedDate = date"
             :class="[
               'px-2 sm:px-3 py-2 border text-sm whitespace-nowrap transition-colors min-h-[44px]',
-              selectedDate === date ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-clay'
+              selectedDate === date ? 'border-moss bg-moss text-on-fill' : 'border-ash text-ash hover:border-clay'
             ]"
           >
             {{ formatDateShort(date) }}
@@ -234,7 +326,10 @@
 
         <!-- Day Title -->
         <div class="border-b border-ash pb-2 mb-4 flex flex-wrap justify-between items-center gap-2">
-          <span class="text-clay text-sm sm:text-base truncate">{{ formatDateFull(selectedDate) }}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-clay text-sm sm:text-base truncate">{{ formatDateFull(selectedDate) }}</span>
+            <button v-if="selectedDate" @click="openDateEditor" class="text-ash hover:text-slate text-xs">[EDIT]</button>
+          </div>
           <button @click="addActivity" class="text-moss text-sm hover:underline flex-shrink-0">[+ ADD]</button>
         </div>
 
@@ -267,7 +362,7 @@
                   <button
                     v-if="activity.lat && activity.lng"
                     @click="navigateTo(activity)"
-                    class="text-moss hover:underline ml-2"
+                    class="text-slate hover:underline ml-2"
                   >[MAP]</button>
                 </div>
                 <div v-if="activity.notes" class="text-ash text-xs mt-2 border-l-2 border-ash pl-2">{{ activity.notes }}</div>
@@ -436,7 +531,7 @@
                 v-if="activityForm.lat && activityForm.lng"
                 :href="'https://www.google.com/maps?q=' + activityForm.lat + ',' + activityForm.lng"
                 target="_blank"
-                class="text-moss text-xs hover:underline mt-1 inline-block"
+                class="text-slate text-xs hover:underline mt-1 inline-block"
               >[View on Google Maps]</a>
             </div>
           </div>
@@ -487,7 +582,7 @@
                 @click="expenseForm.payer = member"
                 :class="[
                   'flex-1 min-w-[80px] border px-3 py-3 transition-colors text-sm',
-                  expenseForm.payer === member ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-paper'
+                  expenseForm.payer === member ? 'border-moss bg-moss text-on-fill' : 'border-ash text-ash hover:border-paper'
                 ]"
               >{{ member }}</button>
             </div>
@@ -513,7 +608,7 @@
       </div>
     </div>
 
-    <!-- Date Picker Modal -->
+    <!-- Date Picker Modal (Add New) -->
     <div v-if="showDatePicker" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
       <div class="bg-void border border-ash w-full max-w-md">
         <div class="border-b border-ash px-4 py-3 flex justify-between items-center bg-void-dark">
@@ -525,6 +620,163 @@
           <button @click="addDate" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
             [ ADD ]
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Date Editor Modal (Edit/Delete) -->
+    <div v-if="showDateEditor" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-void border border-ash w-full max-w-md">
+        <div class="border-b border-ash px-4 py-3 flex justify-between items-center bg-void-dark">
+          <span class="text-clay">[EDIT_DATE]</span>
+          <button @click="showDateEditor = false" class="text-ash hover:text-rust">[X]</button>
+        </div>
+        <div class="p-4 space-y-4">
+          <!-- Current date display -->
+          <div>
+            <label class="block text-ash text-sm mb-1">CURRENT_DATE</label>
+            <div class="text-paper">{{ formatDateFull(editingDate) }}</div>
+          </div>
+
+          <!-- Change date -->
+          <div>
+            <label class="block text-ash text-sm mb-1">CHANGE_TO</label>
+            <input v-model="editingDateNew" type="date" class="w-full bg-void-dark border border-ash text-paper px-3 py-2">
+          </div>
+
+          <button @click="saveDate" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
+            [ SAVE ]
+          </button>
+
+          <!-- Delete section -->
+          <div class="border-t border-dashed border-ash pt-4 mt-4">
+            <div v-if="!confirmingDelete">
+              <button @click="confirmingDelete = true" class="w-full border border-rust text-rust px-4 py-3 hover:bg-rust hover:text-void transition-colors">
+                [ DELETE DATE ]
+              </button>
+            </div>
+            <div v-else class="space-y-3">
+              <div class="border border-rust bg-rust/10 p-3">
+                <p class="text-rust text-sm font-bold mb-2">[!] WARNING</p>
+                <p class="text-paper text-sm">This will permanently delete:</p>
+                <ul class="text-clay text-sm mt-2 ml-4 list-disc">
+                  <li>Date: {{ formatDateFull(editingDate) }}</li>
+                  <li v-if="activitiesInEditingDate > 0" class="text-rust font-bold">{{ activitiesInEditingDate }} activity(ies) on this date</li>
+                  <li v-else class="text-ash">No activities on this date</li>
+                </ul>
+              </div>
+              <div class="flex gap-2">
+                <button @click="confirmingDelete = false" class="flex-1 border border-ash text-ash px-4 py-3 hover:border-paper hover:text-paper transition-colors">
+                  [ CANCEL ]
+                </button>
+                <button @click="deleteDate" class="flex-1 border border-rust text-rust px-4 py-3 hover:bg-rust hover:text-void transition-colors">
+                  [ CONFIRM ]
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backup Modal -->
+    <div v-if="showBackupModal" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-void border border-ash w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="border-b border-ash px-4 py-3 flex justify-between items-center bg-void-dark">
+          <span class="text-clay">[BACKUP_&_RESTORE]</span>
+          <button @click="showBackupModal = false" class="text-ash hover:text-rust">[X]</button>
+        </div>
+        <div class="p-4 space-y-4">
+
+          <!-- Google Apps Script URL Display -->
+          <div>
+            <label class="block text-ash text-sm mb-1">GOOGLE_SCRIPT_URL</label>
+            <div v-if="backupScriptUrl" class="w-full bg-void-dark border border-ash text-moss px-3 py-2 text-xs truncate">
+              {{ backupScriptUrl }}
+            </div>
+            <div v-else class="w-full bg-void-dark border border-rust text-rust px-3 py-2 text-xs">
+              [!] Not configured - see instructions below
+            </div>
+          </div>
+
+          <!-- Status Message -->
+          <div v-if="backupStatus" :class="['p-3 text-sm border', backupStatus.type === 'success' ? 'border-moss text-moss bg-moss/10' : backupStatus.type === 'error' ? 'border-rust text-rust bg-rust/10' : 'border-slate text-slate bg-slate/10']">
+            {{ backupStatus.message }}
+          </div>
+
+          <!-- Last Backup Info -->
+          <div v-if="lastBackupTime" class="text-ash text-xs">
+            Last backup: {{ lastBackupTime }}
+          </div>
+
+          <!-- Export Button -->
+          <div>
+            <button
+              @click="exportToGoogleSheet"
+              :disabled="!backupScriptUrl || backupLoading"
+              :class="[
+                'w-full border px-4 py-3 transition-colors',
+                !backupScriptUrl || backupLoading ? 'border-ash text-ash opacity-50 cursor-not-allowed' : 'border-moss text-moss hover:bg-moss'
+              ]"
+            >
+              {{ backupLoading ? '[ EXPORTING... ]' : '[ EXPORT TO GOOGLE SHEET ]' }}
+            </button>
+            <p class="text-ash text-xs mt-1">Save current trip data to your Google Sheet</p>
+          </div>
+
+          <!-- Import Button -->
+          <div class="border-t border-dashed border-ash pt-4">
+            <button
+              @click="confirmImport"
+              :disabled="!backupScriptUrl || backupLoading"
+              :class="[
+                'w-full border px-4 py-3 transition-colors',
+                !backupScriptUrl || backupLoading ? 'border-ash text-ash opacity-50 cursor-not-allowed' : 'border-slate text-slate hover:bg-slate'
+              ]"
+            >
+              {{ backupLoading ? '[ IMPORTING... ]' : '[ IMPORT FROM GOOGLE SHEET ]' }}
+            </button>
+            <p class="text-ash text-xs mt-1">Restore trip data from your Google Sheet backup</p>
+          </div>
+
+          <!-- Import Confirmation -->
+          <div v-if="showImportConfirm" class="border border-clay bg-clay/10 p-3 space-y-3">
+            <p class="text-clay text-sm font-bold">[?] CONFIRM IMPORT</p>
+            <p class="text-paper text-sm">This will replace your current trip data with the backup. Continue?</p>
+            <div class="flex gap-2">
+              <button @click="showImportConfirm = false" class="flex-1 border border-ash text-ash px-4 py-2 hover:border-paper hover:text-paper transition-colors">
+                [ CANCEL ]
+              </button>
+              <button @click="importFromGoogleSheet" class="flex-1 border border-slate text-slate px-4 py-2 hover:bg-slate transition-colors">
+                [ IMPORT ]
+              </button>
+            </div>
+          </div>
+
+          <!-- Setup Instructions -->
+          <div class="border-t border-dashed border-ash pt-4">
+            <details class="text-xs" :open="!backupScriptUrl">
+              <summary class="text-slate cursor-pointer hover:underline">Setup Instructions</summary>
+              <div class="mt-2 space-y-2">
+                <p class="text-clay">Google Sheet Setup:</p>
+                <ol class="text-ash space-y-1 list-decimal ml-4">
+                  <li>Create a new Google Sheet</li>
+                  <li>Go to Extensions > Apps Script</li>
+                  <li>Paste the code from <code class="text-clay">google-apps-script.js</code></li>
+                  <li>Deploy > New deployment > Web app</li>
+                  <li>Set "Who has access" to "Anyone"</li>
+                  <li>Copy the deployment URL</li>
+                </ol>
+                <p class="text-clay mt-3">Configure URL in Code:</p>
+                <ol class="text-ash space-y-1 list-decimal ml-4">
+                  <li>Open <code class="text-clay">index.html</code></li>
+                  <li>Search for <code class="text-clay">BACKUP_SCRIPT_URL</code></li>
+                  <li>Paste your URL between the quotes</li>
+                </ol>
+              </div>
+            </details>
+          </div>
+
         </div>
       </div>
     </div>
@@ -678,16 +930,16 @@
 
         // Apply initial theme
         if (!isDark.value) {
-          document.body.classList.add('light');
+          document.documentElement.setAttribute('data-theme', 'light');
         }
 
         const toggleTheme = () => {
           isDark.value = !isDark.value;
           if (isDark.value) {
-            document.body.classList.remove('light');
+            document.documentElement.setAttribute('data-theme', 'dark');
             localStorage.setItem('theme', 'dark');
           } else {
-            document.body.classList.add('light');
+            document.documentElement.setAttribute('data-theme', 'light');
             localStorage.setItem('theme', 'light');
           }
         };
@@ -710,8 +962,23 @@
         const showActivityForm = ref(false);
         const showExpenseForm = ref(false);
         const showDatePicker = ref(false);
+        const showDateEditor = ref(false);
+        const showBackupModal = ref(false);
+        const showImportConfirm = ref(false);
         const editingActivity = ref(null);
+        const editingDate = ref('');
+        const editingDateNew = ref('');
+        const confirmingDelete = ref(false);
         const newDate = ref('');
+
+        // Backup state
+        // === CONFIGURE YOUR GOOGLE APPS SCRIPT URL HERE ===
+        const BACKUP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJd9mDJALnh6UuAbMy6AAIq-MIPxQExprQyqQFKqOnIj73XY9xL69kZDWWIFmdJqgk/exec';
+        // ===================================================
+        const backupScriptUrl = ref(BACKUP_SCRIPT_URL);
+        const backupLoading = ref(false);
+        const backupStatus = ref(null);
+        const lastBackupTime = ref(localStorage.getItem('lastBackupTime') || '');
 
         const activityForm = ref({
           time: '',
@@ -774,6 +1041,11 @@
             };
           }
           return { from: '', to: '', amount: 0 };
+        });
+
+        const activitiesInEditingDate = computed(() => {
+          if (!editingDate.value) return 0;
+          return activities.value.filter(a => a.date === editingDate.value).length;
         });
 
         // State for empty trip warning
@@ -939,6 +1211,82 @@
           newDate.value = '';
         };
 
+        const openDateEditor = () => {
+          editingDate.value = selectedDate.value;
+          editingDateNew.value = selectedDate.value;
+          confirmingDelete.value = false;
+          showDateEditor.value = true;
+        };
+
+        const saveDate = async () => {
+          if (!editingDateNew.value || editingDateNew.value === editingDate.value) {
+            showDateEditor.value = false;
+            return;
+          }
+
+          const tripRef = db.ref(`trips/${tripId.value}`);
+
+          // Find and update the date entry
+          const datesSnapshot = await tripRef.child('dates').once('value');
+          const datesData = datesSnapshot.val();
+          if (datesData) {
+            for (const [key, value] of Object.entries(datesData)) {
+              if (value === editingDate.value) {
+                await tripRef.child(`dates/${key}`).set(editingDateNew.value);
+                break;
+              }
+            }
+          }
+
+          // Update all activities with this date
+          const activitiesSnapshot = await tripRef.child('activities').once('value');
+          const activitiesData = activitiesSnapshot.val();
+          if (activitiesData) {
+            for (const [key, activity] of Object.entries(activitiesData)) {
+              if (activity.date === editingDate.value) {
+                await tripRef.child(`activities/${key}/date`).set(editingDateNew.value);
+              }
+            }
+          }
+
+          selectedDate.value = editingDateNew.value;
+          showDateEditor.value = false;
+        };
+
+        const deleteDate = async () => {
+          const tripRef = db.ref(`trips/${tripId.value}`);
+
+          // Find and delete the date entry
+          const datesSnapshot = await tripRef.child('dates').once('value');
+          const datesData = datesSnapshot.val();
+          if (datesData) {
+            for (const [key, value] of Object.entries(datesData)) {
+              if (value === editingDate.value) {
+                await tripRef.child(`dates/${key}`).remove();
+                break;
+              }
+            }
+          }
+
+          // Delete all activities with this date
+          const activitiesSnapshot = await tripRef.child('activities').once('value');
+          const activitiesData = activitiesSnapshot.val();
+          if (activitiesData) {
+            for (const [key, activity] of Object.entries(activitiesData)) {
+              if (activity.date === editingDate.value) {
+                await tripRef.child(`activities/${key}`).remove();
+              }
+            }
+          }
+
+          // Select another date if available
+          const remainingDates = tripDates.value.filter(d => d !== editingDate.value);
+          selectedDate.value = remainingDates.length > 0 ? remainingDates[0] : '';
+
+          showDateEditor.value = false;
+          confirmingDelete.value = false;
+        };
+
         const addActivity = () => {
           editingActivity.value = null;
           activityForm.value = {
@@ -1088,8 +1436,98 @@
         };
 
         const navigateTo = (activity) => {
-          const url = `https://www.google.com/maps/dir/?api=1&destination=${activity.lat},${activity.lng}`;
+          const url = `https://www.google.com/maps?q=${activity.lat},${activity.lng}`;
           window.open(url, '_blank');
+        };
+
+        // Backup functions
+        const exportToGoogleSheet = async () => {
+          if (!backupScriptUrl.value || !tripId.value) return;
+
+          backupLoading.value = true;
+          backupStatus.value = { type: 'info', message: 'Exporting to Google Sheet...' };
+
+          try {
+            // Get current data from Firebase
+            const tripRef = db.ref(`trips/${tripId.value}`);
+            const snapshot = await tripRef.once('value');
+            const tripData = snapshot.val() || {};
+
+            const payload = {
+              tripId: tripId.value,
+              dates: tripData.dates || {},
+              activities: tripData.activities || {},
+              expenses: tripData.expenses || {},
+              members: tripMembers.value,
+              action: 'export'
+            };
+
+            const response = await fetch(backupScriptUrl.value, {
+              method: 'POST',
+              mode: 'no-cors', // Google Apps Script requires no-cors for POST
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            // With no-cors, we can't read the response, but if no error, assume success
+            const now = new Date().toLocaleString();
+            lastBackupTime.value = now;
+            localStorage.setItem('lastBackupTime', now);
+            backupStatus.value = { type: 'success', message: 'Backup saved successfully!' };
+
+          } catch (error) {
+            console.error('Export error:', error);
+            backupStatus.value = { type: 'error', message: 'Export failed: ' + error.message };
+          }
+
+          backupLoading.value = false;
+        };
+
+        const confirmImport = () => {
+          showImportConfirm.value = true;
+        };
+
+        const importFromGoogleSheet = async () => {
+          if (!backupScriptUrl.value || !tripId.value) return;
+
+          backupLoading.value = true;
+          showImportConfirm.value = false;
+          backupStatus.value = { type: 'info', message: 'Fetching backup from Google Sheet...' };
+
+          try {
+            // Fetch backup data
+            const url = `${backupScriptUrl.value}?tripId=${encodeURIComponent(tripId.value)}&action=fetch`;
+            const response = await fetch(url);
+            const result = await response.json();
+
+            if (!result.success) {
+              throw new Error(result.error || 'Failed to fetch backup');
+            }
+
+            if (!result.data) {
+              backupStatus.value = { type: 'error', message: 'No backup found for this trip' };
+              backupLoading.value = false;
+              return;
+            }
+
+            // Restore data to Firebase
+            const tripRef = db.ref(`trips/${tripId.value}`);
+
+            // Clear existing data and set new data
+            await tripRef.set({
+              dates: result.data.dates || {},
+              activities: result.data.activities || {},
+              expenses: result.data.expenses || {}
+            });
+
+            backupStatus.value = { type: 'success', message: 'Data restored successfully! Backup from: ' + result.data.updatedAt };
+
+          } catch (error) {
+            console.error('Import error:', error);
+            backupStatus.value = { type: 'error', message: 'Import failed: ' + error.message };
+          }
+
+          backupLoading.value = false;
         };
 
         // Online/offline detection
@@ -1150,7 +1588,18 @@
           showActivityForm,
           showExpenseForm,
           showDatePicker,
+          showDateEditor,
+          showBackupModal,
+          showImportConfirm,
+          backupScriptUrl,
+          backupLoading,
+          backupStatus,
+          lastBackupTime,
           editingActivity,
+          editingDate,
+          editingDateNew,
+          confirmingDelete,
+          activitiesInEditingDate,
           newDate,
           activityForm,
           expenseForm,
@@ -1167,6 +1616,9 @@
           formatDateFull,
           getCategoryIcon,
           addDate,
+          openDateEditor,
+          saveDate,
+          deleteDate,
           addActivity,
           editActivity,
           saveActivity,
@@ -1179,7 +1631,10 @@
           searchPlacesDebounced,
           selectPlace,
           clearLocation,
-          navigateTo
+          navigateTo,
+          exportToGoogleSheet,
+          confirmImport,
+          importFromGoogleSheet
         };
       }
     }).mount('#app');
