@@ -543,29 +543,50 @@
       return false;
     };
 
-    // Security: Rate limiting for login attempts
+    // Security: Rate limiting for login attempts (persists across page reloads)
     const rateLimiter = {
-      attempts: [],
       maxAttempts: 5,
       windowMs: 60000, // 1 minute
       lockoutMs: 300000, // 5 minute lockout after max attempts
-      lockedUntil: 0,
+
+      _loadState() {
+        try {
+          const saved = localStorage.getItem('_rl');
+          if (saved) {
+            const state = JSON.parse(saved);
+            return {
+              attempts: state.a || [],
+              lockedUntil: state.l || 0
+            };
+          }
+        } catch (e) {}
+        return { attempts: [], lockedUntil: 0 };
+      },
+
+      _saveState(attempts, lockedUntil) {
+        try {
+          localStorage.setItem('_rl', JSON.stringify({ a: attempts, l: lockedUntil }));
+        } catch (e) {}
+      },
 
       canAttempt() {
         const now = Date.now();
+        let { attempts, lockedUntil } = this._loadState();
 
         // Check if locked out
-        if (now < this.lockedUntil) {
-          const remainingMs = this.lockedUntil - now;
+        if (now < lockedUntil) {
+          const remainingMs = lockedUntil - now;
           const remainingMin = Math.ceil(remainingMs / 60000);
           return { allowed: false, message: `Too many attempts. Try again in ${remainingMin} min.` };
         }
 
         // Clean old attempts
-        this.attempts = this.attempts.filter(t => now - t < this.windowMs);
+        attempts = attempts.filter(t => now - t < this.windowMs);
+        this._saveState(attempts, 0);
 
-        if (this.attempts.length >= this.maxAttempts) {
-          this.lockedUntil = now + this.lockoutMs;
+        if (attempts.length >= this.maxAttempts) {
+          const newLockedUntil = now + this.lockoutMs;
+          this._saveState(attempts, newLockedUntil);
           return { allowed: false, message: 'Too many attempts. Locked for 5 minutes.' };
         }
 
@@ -573,12 +594,11 @@
       },
 
       recordAttempt() {
-        this.attempts.push(Date.now());
-      },
-
-      reset() {
-        this.attempts = [];
-        this.lockedUntil = 0;
+        const now = Date.now();
+        let { attempts, lockedUntil } = this._loadState();
+        attempts = attempts.filter(t => now - t < this.windowMs);
+        attempts.push(now);
+        this._saveState(attempts, lockedUntil);
       }
     };
 
@@ -735,7 +755,7 @@
 
             authenticated.value = true;
             authError.value = '';
-            rateLimiter.reset(); // Reset on success
+            // Note: Don't reset rate limiter here - prevents brute force attempts
 
             // Store tripId for session (not the password)
             localStorage.setItem('tripId', tripId.value);
