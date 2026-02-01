@@ -155,7 +155,7 @@
           <span class="w-2 h-2 bg-rust rounded-full"></span>
           OFFLINE
         </span>
-        <span v-if="authenticated" class="text-clay text-xs">hello {{ currentUser }}</span>
+        <span v-if="authenticated" class="text-clay text-xs">hello yd / shiaoyu</span>
         <button @click="logout" class="text-ash text-xs hover:text-rust">[LOGOUT]</button>
       </div>
     </header>
@@ -177,20 +177,6 @@
           <div class="border-b border-ash pb-2 mb-4 flex justify-between text-ash text-sm">
             <span>[AUTH_REQUIRED]</span>
             <span>:::</span>
-          </div>
-          <div class="mb-4">
-            <label class="block text-ash text-sm mb-2">WHO_ARE_YOU</label>
-            <div class="flex gap-2">
-              <button
-                v-for="name in ['yd', 'shiaoyu']"
-                :key="name"
-                @click="currentUser = name"
-                :class="[
-                  'flex-1 border px-3 py-2 transition-colors',
-                  currentUser === name ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-paper'
-                ]"
-              >{{ name }}</button>
-            </div>
           </div>
           <div class="mb-6">
             <label class="block text-ash text-sm mb-2">TRIP_PASSWORD</label>
