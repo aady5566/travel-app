@@ -164,7 +164,7 @@
             [ CONNECT ]
           </button>
           <p v-if="authError" class="text-rust text-sm mt-3">[!] {{ authError }}</p>
-          <p class="text-ash text-xs mt-4">First time? Enter any password to create a new trip.</p>
+          <p class="text-ash text-xs mt-4">Enter a shared password (6+ chars) to access your trip.</p>
         </div>
       </div>
 
@@ -493,15 +493,53 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // Simple hash function for trip password
-    const hashPassword = (str) => {
-      let hash = 0;
-      for (let i = 0; i < str.length; i++) {
-        const char = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
+    // Security: SHA-256 hash with app-specific salt (not reversible)
+    const hashPassword = async (password) => {
+      const salt = 'travel-y6huan9-2025-xK9mP2vL'; // App-specific salt
+      const data = new TextEncoder().encode(password + salt);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return 'trip_' + hashHex.substring(0, 32); // 128-bit entropy
+    };
+
+    // Security: Rate limiting for login attempts
+    const rateLimiter = {
+      attempts: [],
+      maxAttempts: 5,
+      windowMs: 60000, // 1 minute
+      lockoutMs: 300000, // 5 minute lockout after max attempts
+      lockedUntil: 0,
+
+      canAttempt() {
+        const now = Date.now();
+
+        // Check if locked out
+        if (now < this.lockedUntil) {
+          const remainingMs = this.lockedUntil - now;
+          const remainingMin = Math.ceil(remainingMs / 60000);
+          return { allowed: false, message: `Too many attempts. Try again in ${remainingMin} min.` };
+        }
+
+        // Clean old attempts
+        this.attempts = this.attempts.filter(t => now - t < this.windowMs);
+
+        if (this.attempts.length >= this.maxAttempts) {
+          this.lockedUntil = now + this.lockoutMs;
+          return { allowed: false, message: 'Too many attempts. Locked for 5 minutes.' };
+        }
+
+        return { allowed: true };
+      },
+
+      recordAttempt() {
+        this.attempts.push(Date.now());
+      },
+
+      reset() {
+        this.attempts = [];
+        this.lockedUntil = 0;
       }
-      return 'trip_' + Math.abs(hash).toString(16);
     };
 
     const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
@@ -602,18 +640,34 @@
 
         // Methods
         const authenticate = async () => {
+          // Rate limiting check
+          const rateCheck = rateLimiter.canAttempt();
+          if (!rateCheck.allowed) {
+            authError.value = rateCheck.message;
+            return;
+          }
+
           if (!tripPassword.value) {
             authError.value = 'Please enter a password';
             return;
           }
 
+          // Minimum password length for security
+          if (tripPassword.value.length < 6) {
+            authError.value = 'Password must be at least 6 characters';
+            rateLimiter.recordAttempt();
+            return;
+          }
+
           try {
+            rateLimiter.recordAttempt();
             await auth.signInAnonymously();
-            tripId.value = hashPassword(tripPassword.value);
+            tripId.value = await hashPassword(tripPassword.value);
             authenticated.value = true;
             authError.value = '';
+            rateLimiter.reset(); // Reset on success
 
-            // Store tripId for session
+            // Store tripId for session (not the password)
             localStorage.setItem('tripId', tripId.value);
 
             // Setup listeners

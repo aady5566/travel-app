@@ -1,50 +1,109 @@
 {
   "rules": {
+    // Global: Deny all by default
+    ".read": false,
+    ".write": false,
+
     "trips": {
       "$tripId": {
-        // Only authenticated users can read/write
-        ".read": "auth != null",
-        ".write": "auth != null",
+        // Only authenticated users can access
+        // Trip ID must be 38 chars (trip_ + 32 hex chars from SHA-256)
+        ".read": "auth != null && $tripId.matches(/^trip_[a-f0-9]{32}$/)",
+        ".write": "auth != null && $tripId.matches(/^trip_[a-f0-9]{32}$/)",
+
+        // Limit total trip size to prevent abuse (1MB max)
+        ".validate": "newData.val().length < 1048576",
 
         "dates": {
-          ".validate": "newData.hasChildren()",
+          // Max 30 dates per trip
+          ".validate": "newData.numChildren() <= 30",
           "$dateId": {
-            ".validate": "newData.isString() && newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/) && newData.val().length == 10"
           }
         },
 
         "activities": {
+          // Max 200 activities per trip
+          ".validate": "newData.numChildren() <= 200",
           "$activityId": {
             ".validate": "newData.hasChild('title') && newData.hasChild('date')",
-            "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
-            "date": { ".validate": "newData.isString() && newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/)" },
-            "time": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 10)" },
-            "category": { ".validate": "!newData.exists() || newData.isString()" },
-            "location": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 500)" },
-            "lat": { ".validate": "!newData.exists() || newData.isNumber()" },
-            "lng": { ".validate": "!newData.exists() || newData.isNumber()" },
-            "notes": { ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 1000)" },
-            "updatedAt": { ".validate": "newData.isNumber()" }
+            "title": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+            },
+            "date": {
+              ".validate": "newData.isString() && newData.val().matches(/^\\d{4}-\\d{2}-\\d{2}$/)"
+            },
+            "time": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 10)"
+            },
+            "category": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20)"
+            },
+            "location": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 200)"
+            },
+            "lat": {
+              ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= -90 && newData.val() <= 90)"
+            },
+            "lng": {
+              ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= -180 && newData.val() <= 180)"
+            },
+            "notes": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 500)"
+            },
+            "updatedAt": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            // Reject any extra fields
+            "$other": {
+              ".validate": false
+            }
           }
         },
 
         "expenses": {
+          // Max 500 expenses per trip
+          ".validate": "newData.numChildren() <= 500",
           "$expenseId": {
             ".validate": "newData.hasChild('amount') && newData.hasChild('description') && newData.hasChild('payer')",
-            "amount": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000000" },
-            "description": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
-            "category": { ".validate": "!newData.exists() || newData.isString()" },
-            "payer": { ".validate": "newData.isString() && newData.val().length > 0" },
-            "splitBetween": { ".validate": "newData.hasChildren()" },
-            "date": { ".validate": "newData.isString()" },
-            "createdAt": { ".validate": "newData.isNumber()" }
+            "amount": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000"
+            },
+            "description": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+            },
+            "category": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 20)"
+            },
+            "payer": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+            },
+            "splitBetween": {
+              ".validate": "newData.hasChildren() && newData.numChildren() <= 10"
+            },
+            "date": {
+              ".validate": "newData.isString() && newData.val().length <= 10"
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber() && newData.val() <= now"
+            },
+            "$other": {
+              ".validate": false
+            }
           }
         },
 
         "members": {
+          // Max 10 members per trip
+          ".validate": "newData.numChildren() <= 10",
           "$memberId": {
-            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50"
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
           }
+        },
+
+        // Reject any other data at trip level
+        "$other": {
+          ".validate": false
         }
       }
     }
