@@ -160,10 +160,18 @@
               @keyup.enter="authenticate"
             >
           </div>
-          <button @click="authenticate" class="w-full border border-moss text-moss px-4 py-2 hover:bg-moss hover:text-void transition-colors">
-            [ CONNECT ]
+          <button
+            @click="authenticate"
+            :disabled="isLocked"
+            :class="[
+              'w-full border px-4 py-2 transition-colors',
+              isLocked ? 'border-ash text-ash cursor-not-allowed opacity-50' : 'border-moss text-moss hover:bg-moss hover:text-void'
+            ]"
+          >
+            {{ isLocked ? '[ LOCKED ]' : '[ CONNECT ]' }}
           </button>
           <p v-if="authError" class="text-rust text-sm mt-3">[!] {{ authError }}</p>
+          <p v-if="isLocked" class="text-rust text-sm mt-3">{{ lockMessage }}</p>
           <p class="text-ash text-xs mt-4">Enter a shared password (6+ chars) to access your trip.</p>
         </div>
       </div>
@@ -700,11 +708,23 @@
 
         // State for empty trip warning
         const isNewTrip = ref(false);
+        const isLocked = ref(false);
+        const lockMessage = ref('');
+
+        // Check lock status (for UI)
+        const checkLockStatus = () => {
+          const rateCheck = rateLimiter.canAttempt();
+          isLocked.value = !rateCheck.allowed;
+          if (!rateCheck.allowed) {
+            lockMessage.value = rateCheck.message;
+          }
+          return rateCheck;
+        };
 
         // Methods
         const authenticate = async () => {
           // Rate limiting check
-          const rateCheck = rateLimiter.canAttempt();
+          const rateCheck = checkLockStatus();
           if (!rateCheck.allowed) {
             authError.value = rateCheck.message;
             return;
@@ -1035,6 +1055,11 @@
 
         // Init
         onMounted(async () => {
+          // Check lock status on load
+          checkLockStatus();
+          // Update lock status every 10 seconds (for countdown)
+          setInterval(checkLockStatus, 10000);
+
           // Check for stored session
           const storedTripId = localStorage.getItem('tripId');
           if (storedTripId) {
@@ -1058,6 +1083,8 @@
           currentUser,
           isOnline,
           isNewTrip,
+          isLocked,
+          lockMessage,
           activeTab,
           tabs,
           tripMembers,
