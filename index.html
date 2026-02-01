@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1A1D21">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Japan Travel // 日本旅行</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            void: '#1A1D21',
+            'void-dark': '#121417',
+            rust: '#C75C5C',
+            moss: '#778A5E',
+            clay: '#E0C097',
+            ash: '#6B7280',
+            paper: '#EBE5CE',
+          },
+          fontFamily: {
+            mono: ['Fira Code', 'monospace'],
+            sans: ['Noto Sans TC', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background-color: #1A1D21;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #121417; }
+    ::-webkit-scrollbar-thumb { background: #6B7280; border-radius: 3px; }
+
+    /* Button press effect */
+    .btn-cli:active { transform: translate(1px, 1px); }
+
+    /* Blinking cursor */
+    .cursor-blink::after {
+      content: '█';
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    /* Scanline effect */
+    .scanline::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.1) 2px,
+        rgba(0,0,0,0.1) 4px
+      );
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Map styles */
+    #map { z-index: 1; }
+    .leaflet-container { background: #121417; font-family: 'Fira Code', monospace; }
+    .leaflet-popup-content-wrapper { background: #1A1D21; color: #EBE5CE; border: 1px solid #6B7280; border-radius: 2px; }
+    .leaflet-popup-tip { background: #1A1D21; border: 1px solid #6B7280; }
+
+    /* Input focus ring */
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #778A5E !important; }
+
+    /* Safe area for notch devices */
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 16px); }
+
+    /* Tab transition */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Swipe hint */
+    .swipe-hint {
+      background: linear-gradient(90deg, transparent, rgba(119,138,94,0.3), transparent);
+      animation: swipeHint 2s ease-in-out infinite;
+    }
+    @keyframes swipeHint {
+      0%, 100% { transform: translateX(-100%); }
+      50% { transform: translateX(100%); }
+    }
+  </style>
+</head>
+
+<body class="font-mono text-paper min-h-screen flex flex-col">
+  <div id="app" class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-void-dark border-b border-ash px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+      <div class="flex items-center gap-2">
+        <span class="text-moss text-sm">[</span>
+        <span class="text-clay font-bold">JAPAN_2025</span>
+        <span class="text-moss text-sm">]</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span v-if="isOnline" class="text-moss text-xs flex items-center gap-1">
+          <span class="w-2 h-2 bg-moss rounded-full animate-pulse"></span>
+          SYNC
+        </span>
+        <span v-else class="text-rust text-xs flex items-center gap-1">
+          <span class="w-2 h-2 bg-rust rounded-full"></span>
+          OFFLINE
+        </span>
+        <span class="text-ash text-xs">{{ currentUser }}</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto pb-20">
+
+      <!-- Loading State -->
+      <div v-if="loading" class="flex items-center justify-center h-64">
+        <div class="text-center">
+          <div class="text-moss text-2xl mb-2">[ LOADING ]</div>
+          <div class="text-ash text-sm">Initializing system...</div>
+        </div>
+      </div>
+
+      <!-- Auth Screen -->
+      <div v-else-if="!authenticated" class="p-6 max-w-md mx-auto mt-10">
+        <div class="border border-ash bg-void-dark p-6">
+          <div class="border-b border-ash pb-2 mb-4 flex justify-between text-ash text-sm">
+            <span>[AUTH_REQUIRED]</span>
+            <span>:::</span>
+          </div>
+          <div class="mb-6">
+            <label class="block text-ash text-sm mb-2">TRIP_PASSWORD</label>
+            <input
+              v-model="tripPassword"
+              type="password"
+              class="w-full bg-void border border-ash text-paper px-3 py-2 text-sm"
+              placeholder="Enter shared password..."
+              @keyup.enter="authenticate"
+            >
+          </div>
+          <button @click="authenticate" class="w-full border border-moss text-moss px-4 py-2 hover:bg-moss hover:text-void transition-colors">
+            [ CONNECT ]
+          </button>
+          <p v-if="authError" class="text-rust text-sm mt-3">[!] {{ authError }}</p>
+          <p class="text-ash text-xs mt-4">First time? Enter any password to create a new trip.</p>
+        </div>
+      </div>
+
+      <!-- Itinerary Tab -->
+      <div v-else-if="activeTab === 'itinerary'" class="tab-content active p-4">
+        <!-- Date Selector -->
+        <div class="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+          <button
+            v-for="(date, idx) in tripDates"
+            :key="idx"
+            @click="selectedDate = date"
+            :class="[
+              'px-3 py-2 border text-sm whitespace-nowrap transition-colors',
+              selectedDate === date ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-clay'
+            ]"
+          >
+            {{ formatDateShort(date) }}
+          </button>
+          <button @click="showDatePicker = true" class="px-3 py-2 border border-dashed border-ash text-ash hover:border-moss hover:text-moss">
+            [+]
+          </button>
+        </div>
+
+        <!-- Day Title -->
+        <div class="border-b border-ash pb-2 mb-4 flex justify-between items-center">
+          <span class="text-clay">{{ formatDateFull(selectedDate) }}</span>
+          <button @click="addActivity" class="text-moss text-sm hover:underline">[+ ADD]</button>
+        </div>
+
+        <!-- Activities List -->
+        <div v-if="dayActivities.length === 0" class="text-center py-10 text-ash">
+          <p>No activities planned.</p>
+          <button @click="addActivity" class="text-moss mt-2">[+ Add first activity]</button>
+        </div>
+
+        <div v-for="(activity, idx) in dayActivities" :key="activity.id" class="border border-ash mb-3 bg-void-dark">
+          <div class="flex items-center justify-between border-b border-ash px-3 py-2 bg-black/20">
+            <span class="text-moss text-sm">{{ activity.time || '--:--' }}</span>
+            <div class="flex gap-2">
+              <button @click="editActivity(activity)" class="text-ash hover:text-clay text-xs">[EDIT]</button>
+              <button @click="deleteActivity(activity.id)" class="text-ash hover:text-rust text-xs">[DEL]</button>
+            </div>
+          </div>
+          <div class="p-3">
+            <div class="flex items-start gap-2">
+              <span class="text-clay">{{ getCategoryIcon(activity.category) }}</span>
+              <div class="flex-1">
+                <div class="text-paper font-medium">{{ activity.title }}</div>
+                <div v-if="activity.location" class="text-ash text-sm mt-1 flex items-center gap-1">
+                  <span>@</span>
+                  <span>{{ activity.location }}</span>
+                  <button
+                    v-if="activity.lat && activity.lng"
+                    @click="navigateTo(activity)"
+                    class="text-moss hover:underline ml-2"
+                  >[MAP]</button>
+                </div>
+                <div v-if="activity.notes" class="text-ash text-xs mt-2 border-l-2 border-ash pl-2">{{ activity.notes }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expense Tab -->
+      <div v-else-if="activeTab === 'expense'" class="tab-content active p-4">
+        <!-- Summary Card -->
+        <div class="border border-ash bg-void-dark mb-4">
+          <div class="border-b border-ash px-3 py-2 flex justify-between text-ash text-sm bg-black/20">
+            <span>[BALANCE_SUMMARY]</span>
+            <span>{{ expenses.length }} records</span>
+          </div>
+          <div class="p-4">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <div class="text-ash text-xs mb-1">TOTAL_SPENT</div>
+                <div class="text-clay text-xl font-bold">¥{{ totalExpense.toLocaleString() }}</div>
+              </div>
+              <div>
+                <div class="text-ash text-xs mb-1">CURRENCY</div>
+                <select v-model="displayCurrency" class="bg-void border border-ash text-paper px-2 py-1 text-sm w-full">
+                  <option value="JPY">JPY (¥)</option>
+                  <option value="TWD">TWD (NT$)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Settlement -->
+            <div v-if="settlement.amount > 0" class="border-t border-dashed border-ash pt-4">
+              <div class="text-ash text-xs mb-2">SETTLEMENT</div>
+              <div class="text-paper">
+                <span class="text-rust">{{ settlement.from }}</span>
+                <span class="text-ash"> → </span>
+                <span class="text-moss">{{ settlement.to }}</span>
+                <span class="text-clay font-bold ml-2">¥{{ settlement.amount.toLocaleString() }}</span>
+              </div>
+            </div>
+            <div v-else class="border-t border-dashed border-ash pt-4 text-moss text-sm">
+              [ok] All settled!
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Expense Button -->
+        <button @click="showExpenseForm = true" class="w-full border border-moss text-moss px-4 py-3 mb-4 hover:bg-moss hover:text-void transition-colors">
+          [+ ADD_EXPENSE]
+        </button>
+
+        <!-- Expenses List -->
+        <div v-for="expense in sortedExpenses" :key="expense.id" class="border border-ash mb-2 bg-void-dark">
+          <div class="flex items-center justify-between p-3">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                <span class="text-clay">{{ expense.description }}</span>
+                <span class="text-ash text-xs border border-ash px-1">{{ expense.category }}</span>
+              </div>
+              <div class="text-ash text-xs mt-1">
+                {{ expense.payer }} paid • {{ formatDateShort(expense.date) }}
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-paper font-bold">¥{{ expense.amount.toLocaleString() }}</div>
+              <button @click="deleteExpense(expense.id)" class="text-ash hover:text-rust text-xs">[DEL]</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Tab -->
+      <div v-else-if="activeTab === 'map'" class="tab-content active">
+        <div id="map" class="w-full" style="height: calc(100vh - 140px);"></div>
+        <div class="absolute bottom-24 left-4 right-4 z-20">
+          <div class="bg-void-dark border border-ash p-3">
+            <div class="text-ash text-xs mb-2">[TODAY_LOCATIONS] {{ dayActivities.filter(a => a.lat).length }} points</div>
+            <div class="flex gap-2 overflow-x-auto pb-1">
+              <button
+                v-for="activity in dayActivities.filter(a => a.lat)"
+                :key="activity.id"
+                @click="focusLocation(activity)"
+                class="px-2 py-1 border border-ash text-paper text-xs whitespace-nowrap hover:border-moss"
+              >
+                {{ activity.time }} {{ activity.title }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav v-if="authenticated" class="fixed bottom-0 left-0 right-0 bg-void-dark border-t border-ash safe-bottom z-50">
+      <div class="flex">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="activeTab = tab.id"
+          :class="[
+            'flex-1 py-4 text-center transition-colors',
+            activeTab === tab.id ? 'text-moss bg-void' : 'text-ash hover:text-paper'
+          ]"
+        >
+          <div class="text-lg">{{ tab.icon }}</div>
+          <div class="text-xs mt-1">{{ tab.label }}</div>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Activity Modal -->
+    <div v-if="showActivityForm" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-void border border-ash w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="border-b border-ash px-4 py-3 flex justify-between items-center bg-void-dark">
+          <span class="text-clay">{{ editingActivity ? '[EDIT_ACTIVITY]' : '[NEW_ACTIVITY]' }}</span>
+          <button @click="closeActivityForm" class="text-ash hover:text-rust">[X]</button>
+        </div>
+        <div class="p-4 space-y-4">
+          <div>
+            <label class="block text-ash text-sm mb-1">TIME</label>
+            <input v-model="activityForm.time" type="time" class="w-full bg-void-dark border border-ash text-paper px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">TITLE *</label>
+            <input v-model="activityForm.title" type="text" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="Activity name...">
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">CATEGORY</label>
+            <select v-model="activityForm.category" class="w-full bg-void-dark border border-ash text-paper px-3 py-2">
+              <option value="sightseeing">Sightseeing</option>
+              <option value="food">Food</option>
+              <option value="transport">Transport</option>
+              <option value="hotel">Hotel</option>
+              <option value="shopping">Shopping</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">LOCATION</label>
+            <input v-model="activityForm.location" type="text" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="Place name or address...">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-ash text-sm mb-1">LAT</label>
+              <input v-model.number="activityForm.lat" type="number" step="any" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="35.6762">
+            </div>
+            <div>
+              <label class="block text-ash text-sm mb-1">LNG</label>
+              <input v-model.number="activityForm.lng" type="number" step="any" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="139.6503">
+            </div>
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">NOTES</label>
+            <textarea v-model="activityForm.notes" rows="2" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="Additional info..."></textarea>
+          </div>
+          <button @click="saveActivity" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
+            [ SAVE ]
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div v-if="showExpenseForm" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-void border border-ash w-full max-w-md">
+        <div class="border-b border-ash px-4 py-3 flex justify-between items-center bg-void-dark">
+          <span class="text-clay">[NEW_EXPENSE]</span>
+          <button @click="showExpenseForm = false" class="text-ash hover:text-rust">[X]</button>
+        </div>
+        <div class="p-4 space-y-4">
+          <div>
+            <label class="block text-ash text-sm mb-1">AMOUNT (JPY) *</label>
+            <input v-model.number="expenseForm.amount" type="number" class="w-full bg-void-dark border border-ash text-paper px-3 py-2 text-xl" placeholder="0">
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">DESCRIPTION *</label>
+            <input v-model="expenseForm.description" type="text" class="w-full bg-void-dark border border-ash text-paper px-3 py-2" placeholder="What was this for?">
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">CATEGORY</label>
+            <select v-model="expenseForm.category" class="w-full bg-void-dark border border-ash text-paper px-3 py-2">
+              <option value="food">Food</option>
+              <option value="transport">Transport</option>
+              <option value="hotel">Hotel</option>
+              <option value="ticket">Ticket</option>
+              <option value="shopping">Shopping</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">PAID BY</label>
+            <div class="flex gap-2">
+              <button
+                v-for="member in tripMembers"
+                :key="member"
+                @click="expenseForm.payer = member"
+                :class="[
+                  'flex-1 border px-3 py-2 transition-colors',
+                  expenseForm.payer === member ? 'border-moss bg-moss text-void' : 'border-ash text-ash hover:border-paper'
+                ]"
+              >{{ member }}</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-ash text-sm mb-1">SPLIT BETWEEN</label>
+            <div class="flex gap-2">
+              <button
+                v-for="member in tripMembers"
+                :key="member"
+                @click="toggleSplit(member)"
+                :class="[
+                  'flex-1 border px-3 py-2 transition-colors',
+                  expenseForm.splitBetween.includes(member) ? 'border-clay bg-clay text-void' : 'border-ash text-ash hover:border-paper'
+                ]"
+              >{{ member }}</button>
+            </div>
+          </div>
+          <button @click="saveExpense" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
+            [ SAVE ]
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Date Picker Modal -->
+    <div v-if="showDatePicker" class="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="bg-void border border-ash w-full max-w-md">
+        <div class="border-b border-ash px-4 py-3 flex justify-between items-center bg-void-dark">
+          <span class="text-clay">[ADD_DATE]</span>
+          <button @click="showDatePicker = false" class="text-ash hover:text-rust">[X]</button>
+        </div>
+        <div class="p-4">
+          <input v-model="newDate" type="date" class="w-full bg-void-dark border border-ash text-paper px-3 py-2 mb-4">
+          <button @click="addDate" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
+            [ ADD ]
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database-compat.js"></script>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBhXBAwe7tcbXqycbxX17Q6hpPzzeiRgRI",
+      authDomain: "travel-app-d54b5.firebaseapp.com",
+      databaseURL: "https://travel-app-d54b5-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "travel-app-d54b5",
+      storageBucket: "travel-app-d54b5.firebasestorage.app",
+      messagingSenderId: "472906532801",
+      appId: "1:472906532801:web:582d321701a9c0608e1140"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // Simple hash function for trip password
+    const hashPassword = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return 'trip_' + Math.abs(hash).toString(16);
+    };
+
+    const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+    createApp({
+      setup() {
+        // State
+        const loading = ref(true);
+        const authenticated = ref(false);
+        const tripPassword = ref('');
+        const tripId = ref('');
+        const authError = ref('');
+        const currentUser = ref('User1');
+        const isOnline = ref(navigator.onLine);
+
+        const activeTab = ref('itinerary');
+        const tabs = [
+          { id: 'itinerary', label: 'PLAN', icon: '[]' },
+          { id: 'expense', label: 'BILL', icon: '$$' },
+          { id: 'map', label: 'MAP', icon: '<>' },
+        ];
+
+        // Trip Data
+        const tripMembers = ref(['Me', 'Wife']);
+        const tripDates = ref([]);
+        const selectedDate = ref('');
+        const activities = ref([]);
+        const expenses = ref([]);
+        const displayCurrency = ref('JPY');
+
+        // Forms
+        const showActivityForm = ref(false);
+        const showExpenseForm = ref(false);
+        const showDatePicker = ref(false);
+        const editingActivity = ref(null);
+        const newDate = ref('');
+
+        const activityForm = ref({
+          time: '',
+          title: '',
+          category: 'sightseeing',
+          location: '',
+          lat: null,
+          lng: null,
+          notes: ''
+        });
+
+        const expenseForm = ref({
+          amount: null,
+          description: '',
+          category: 'food',
+          payer: 'Me',
+          splitBetween: ['Me', 'Wife'],
+          date: new Date().toISOString().split('T')[0]
+        });
+
+        // Map
+        let map = null;
+        let markers = [];
+
+        // Computed
+        const dayActivities = computed(() => {
+          return activities.value
+            .filter(a => a.date === selectedDate.value)
+            .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+        });
+
+        const sortedExpenses = computed(() => {
+          return [...expenses.value].sort((a, b) => new Date(b.date) - new Date(a.date));
+        });
+
+        const totalExpense = computed(() => {
+          return expenses.value.reduce((sum, e) => sum + (e.amount || 0), 0);
+        });
+
+        const settlement = computed(() => {
+          const balances = {};
+          tripMembers.value.forEach(m => balances[m] = 0);
+
+          expenses.value.forEach(expense => {
+            const share = expense.amount / expense.splitBetween.length;
+            balances[expense.payer] += expense.amount;
+            expense.splitBetween.forEach(member => {
+              balances[member] -= share;
+            });
+          });
+
+          const sorted = Object.entries(balances).sort((a, b) => a[1] - b[1]);
+          if (sorted.length >= 2 && sorted[0][1] < -1) {
+            return {
+              from: sorted[0][0],
+              to: sorted[sorted.length - 1][0],
+              amount: Math.round(Math.abs(sorted[0][1]))
+            };
+          }
+          return { from: '', to: '', amount: 0 };
+        });
+
+        // Methods
+        const authenticate = async () => {
+          if (!tripPassword.value) {
+            authError.value = 'Please enter a password';
+            return;
+          }
+
+          try {
+            await auth.signInAnonymously();
+            tripId.value = hashPassword(tripPassword.value);
+            authenticated.value = true;
+            authError.value = '';
+
+            // Store tripId for session
+            localStorage.setItem('tripId', tripId.value);
+
+            // Setup listeners
+            setupRealtimeListeners();
+          } catch (error) {
+            authError.value = error.message;
+          }
+        };
+
+        const setupRealtimeListeners = () => {
+          const tripRef = db.ref(`trips/${tripId.value}`);
+
+          // Listen for dates
+          tripRef.child('dates').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              tripDates.value = Object.values(data).sort();
+              if (!selectedDate.value && tripDates.value.length > 0) {
+                selectedDate.value = tripDates.value[0];
+              }
+            }
+          });
+
+          // Listen for activities
+          tripRef.child('activities').on('value', (snapshot) => {
+            const data = snapshot.val();
+            activities.value = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+          });
+
+          // Listen for expenses
+          tripRef.child('expenses').on('value', (snapshot) => {
+            const data = snapshot.val();
+            expenses.value = data ? Object.entries(data).map(([id, val]) => ({ id, ...val })) : [];
+          });
+
+          // Listen for members
+          tripRef.child('members').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+              tripMembers.value = Object.values(data);
+            }
+          });
+        };
+
+        const formatDateShort = (dateStr) => {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          return `${d.getMonth() + 1}/${d.getDate()}`;
+        };
+
+        const formatDateFull = (dateStr) => {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} (${days[d.getDay()]})`;
+        };
+
+        const getCategoryIcon = (cat) => {
+          const icons = {
+            sightseeing: '[*]',
+            food: '[F]',
+            transport: '[>]',
+            hotel: '[H]',
+            shopping: '[$]',
+            other: '[?]'
+          };
+          return icons[cat] || '[?]';
+        };
+
+        const addDate = () => {
+          if (newDate.value && !tripDates.value.includes(newDate.value)) {
+            const tripRef = db.ref(`trips/${tripId.value}/dates`);
+            tripRef.push(newDate.value);
+            selectedDate.value = newDate.value;
+          }
+          showDatePicker.value = false;
+          newDate.value = '';
+        };
+
+        const addActivity = () => {
+          editingActivity.value = null;
+          activityForm.value = {
+            time: '',
+            title: '',
+            category: 'sightseeing',
+            location: '',
+            lat: null,
+            lng: null,
+            notes: ''
+          };
+          showActivityForm.value = true;
+        };
+
+        const editActivity = (activity) => {
+          editingActivity.value = activity;
+          activityForm.value = { ...activity };
+          showActivityForm.value = true;
+        };
+
+        const saveActivity = () => {
+          if (!activityForm.value.title) return;
+
+          const data = {
+            ...activityForm.value,
+            date: selectedDate.value,
+            updatedAt: Date.now()
+          };
+
+          if (editingActivity.value) {
+            db.ref(`trips/${tripId.value}/activities/${editingActivity.value.id}`).update(data);
+          } else {
+            db.ref(`trips/${tripId.value}/activities`).push(data);
+          }
+
+          closeActivityForm();
+        };
+
+        const closeActivityForm = () => {
+          showActivityForm.value = false;
+          editingActivity.value = null;
+        };
+
+        const deleteActivity = (id) => {
+          if (confirm('Delete this activity?')) {
+            db.ref(`trips/${tripId.value}/activities/${id}`).remove();
+          }
+        };
+
+        const saveExpense = () => {
+          if (!expenseForm.value.amount || !expenseForm.value.description) return;
+
+          const data = {
+            ...expenseForm.value,
+            date: new Date().toISOString().split('T')[0],
+            createdAt: Date.now()
+          };
+
+          db.ref(`trips/${tripId.value}/expenses`).push(data);
+
+          showExpenseForm.value = false;
+          expenseForm.value = {
+            amount: null,
+            description: '',
+            category: 'food',
+            payer: 'Me',
+            splitBetween: ['Me', 'Wife'],
+            date: new Date().toISOString().split('T')[0]
+          };
+        };
+
+        const deleteExpense = (id) => {
+          if (confirm('Delete this expense?')) {
+            db.ref(`trips/${tripId.value}/expenses/${id}`).remove();
+          }
+        };
+
+        const toggleSplit = (member) => {
+          const idx = expenseForm.value.splitBetween.indexOf(member);
+          if (idx > -1) {
+            if (expenseForm.value.splitBetween.length > 1) {
+              expenseForm.value.splitBetween.splice(idx, 1);
+            }
+          } else {
+            expenseForm.value.splitBetween.push(member);
+          }
+        };
+
+        const initMap = () => {
+          if (map) return;
+
+          map = L.map('map', {
+            zoomControl: false
+          }).setView([35.6762, 139.6503], 12); // Tokyo
+
+          L.control.zoom({ position: 'topright' }).addTo(map);
+
+          // Dark tile layer
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CARTO',
+            maxZoom: 19
+          }).addTo(map);
+
+          updateMapMarkers();
+        };
+
+        const updateMapMarkers = () => {
+          if (!map) return;
+
+          // Clear existing markers
+          markers.forEach(m => map.removeLayer(m));
+          markers = [];
+
+          // Add markers for today's activities
+          dayActivities.value.forEach(activity => {
+            if (activity.lat && activity.lng) {
+              const marker = L.marker([activity.lat, activity.lng], {
+                icon: L.divIcon({
+                  className: 'custom-marker',
+                  html: `<div style="background:#778A5E;color:#1A1D21;padding:4px 8px;border:1px solid #6B7280;font-family:monospace;font-size:12px;white-space:nowrap;">${activity.time || ''} ${activity.title}</div>`,
+                  iconSize: null
+                })
+              }).addTo(map);
+
+              marker.bindPopup(`
+                <div style="font-size:14px;">
+                  <strong>${activity.title}</strong><br>
+                  <span style="color:#6B7280;">${activity.time || ''}</span><br>
+                  ${activity.location || ''}
+                </div>
+              `);
+
+              markers.push(marker);
+            }
+          });
+
+          // Fit bounds if markers exist
+          if (markers.length > 0) {
+            const group = L.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.1));
+          }
+        };
+
+        const focusLocation = (activity) => {
+          if (map && activity.lat && activity.lng) {
+            map.setView([activity.lat, activity.lng], 16);
+          }
+        };
+
+        const navigateTo = (activity) => {
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${activity.lat},${activity.lng}`;
+          window.open(url, '_blank');
+        };
+
+        // Watch for tab changes
+        watch(activeTab, (newTab) => {
+          if (newTab === 'map') {
+            nextTick(() => {
+              setTimeout(initMap, 100);
+            });
+          }
+        });
+
+        // Watch for date changes to update map
+        watch(selectedDate, () => {
+          if (activeTab.value === 'map') {
+            nextTick(updateMapMarkers);
+          }
+        });
+
+        // Watch activities for map updates
+        watch(activities, () => {
+          if (activeTab.value === 'map') {
+            nextTick(updateMapMarkers);
+          }
+        }, { deep: true });
+
+        // Online/offline detection
+        window.addEventListener('online', () => isOnline.value = true);
+        window.addEventListener('offline', () => isOnline.value = false);
+
+        // Init
+        onMounted(async () => {
+          // Check for stored session
+          const storedTripId = localStorage.getItem('tripId');
+          if (storedTripId) {
+            try {
+              await auth.signInAnonymously();
+              tripId.value = storedTripId;
+              authenticated.value = true;
+              setupRealtimeListeners();
+            } catch (e) {
+              console.error('Auto-login failed:', e);
+            }
+          }
+          loading.value = false;
+        });
+
+        return {
+          loading,
+          authenticated,
+          tripPassword,
+          authError,
+          currentUser,
+          isOnline,
+          activeTab,
+          tabs,
+          tripMembers,
+          tripDates,
+          selectedDate,
+          activities,
+          expenses,
+          displayCurrency,
+          showActivityForm,
+          showExpenseForm,
+          showDatePicker,
+          editingActivity,
+          newDate,
+          activityForm,
+          expenseForm,
+          dayActivities,
+          sortedExpenses,
+          totalExpense,
+          settlement,
+          authenticate,
+          formatDateShort,
+          formatDateFull,
+          getCategoryIcon,
+          addDate,
+          addActivity,
+          editActivity,
+          saveActivity,
+          closeActivityForm,
+          deleteActivity,
+          saveExpense,
+          deleteExpense,
+          toggleSplit,
+          focusLocation,
+          navigateTo
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
