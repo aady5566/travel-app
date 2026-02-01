@@ -128,7 +128,7 @@
           <span class="w-2 h-2 bg-rust rounded-full"></span>
           OFFLINE
         </span>
-        <span class="text-ash text-xs">{{ currentUser }}</span>
+        <button @click="logout" class="text-ash text-xs hover:text-rust">[LOGOUT]</button>
       </div>
     </header>
 
@@ -196,6 +196,10 @@
 
         <!-- Activities List -->
         <div v-if="dayActivities.length === 0" class="text-center py-10 text-ash">
+          <div v-if="isNewTrip && tripDates.length === 0" class="border border-clay p-4 mb-4 bg-clay/10">
+            <p class="text-clay mb-2">[i] This appears to be a new trip.</p>
+            <p class="text-xs">If you expected to see data, double-check your password.</p>
+          </div>
           <p>No activities planned.</p>
           <button @click="addActivity" class="text-moss mt-2">[+ Add first activity]</button>
         </div>
@@ -493,6 +497,17 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
+    // Legacy hash (for backward compatibility with old data)
+    const legacyHash = (str) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return 'trip_' + Math.abs(hash).toString(16);
+    };
+
     // Security: SHA-256 hash with app-specific salt (not reversible)
     const hashPassword = async (password) => {
       const salt = 'travel-y6huan9-2025-xK9mP2vL'; // App-specific salt
@@ -501,6 +516,31 @@
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       return 'trip_' + hashHex.substring(0, 32); // 128-bit entropy
+    };
+
+    // Check if trip has data in Firebase
+    const checkTripExists = async (tripId) => {
+      try {
+        const snapshot = await db.ref(`trips/${tripId}`).once('value');
+        return snapshot.exists() && snapshot.hasChildren();
+      } catch (e) {
+        return false;
+      }
+    };
+
+    // Migrate data from old trip ID to new trip ID
+    const migrateData = async (oldTripId, newTripId) => {
+      try {
+        const snapshot = await db.ref(`trips/${oldTripId}`).once('value');
+        if (snapshot.exists()) {
+          await db.ref(`trips/${newTripId}`).set(snapshot.val());
+          console.log('Data migrated from legacy hash to new hash');
+          return true;
+        }
+      } catch (e) {
+        console.error('Migration failed:', e);
+      }
+      return false;
     };
 
     // Security: Rate limiting for login attempts
@@ -638,6 +678,9 @@
           return { from: '', to: '', amount: 0 };
         });
 
+        // State for empty trip warning
+        const isNewTrip = ref(false);
+
         // Methods
         const authenticate = async () => {
           // Rate limiting check
@@ -662,7 +705,34 @@
           try {
             rateLimiter.recordAttempt();
             await auth.signInAnonymously();
-            tripId.value = await hashPassword(tripPassword.value);
+
+            const newHashId = await hashPassword(tripPassword.value);
+            const legacyId = legacyHash(tripPassword.value);
+
+            // Check if data exists under new hash
+            const newHashExists = await checkTripExists(newHashId);
+
+            if (newHashExists) {
+              // Use new hash (already migrated or new user)
+              tripId.value = newHashId;
+              isNewTrip.value = false;
+            } else {
+              // Check if data exists under legacy hash
+              const legacyExists = await checkTripExists(legacyId);
+
+              if (legacyExists) {
+                // Migrate from legacy to new hash
+                console.log('Found legacy data, migrating...');
+                await migrateData(legacyId, newHashId);
+                tripId.value = newHashId;
+                isNewTrip.value = false;
+              } else {
+                // No data found - this is a new trip
+                tripId.value = newHashId;
+                isNewTrip.value = true;
+              }
+            }
+
             authenticated.value = true;
             authError.value = '';
             rateLimiter.reset(); // Reset on success
@@ -675,6 +745,21 @@
           } catch (error) {
             authError.value = error.message;
           }
+        };
+
+        const logout = () => {
+          // Clear session
+          localStorage.removeItem('tripId');
+          authenticated.value = false;
+          tripPassword.value = '';
+          tripId.value = '';
+          tripDates.value = [];
+          activities.value = [];
+          expenses.value = [];
+          selectedDate.value = '';
+          isNewTrip.value = false;
+          // Sign out from Firebase
+          auth.signOut();
         };
 
         const setupRealtimeListeners = () => {
@@ -952,6 +1037,7 @@
           authError,
           currentUser,
           isOnline,
+          isNewTrip,
           activeTab,
           tabs,
           tripMembers,
@@ -972,6 +1058,7 @@
           totalExpense,
           settlement,
           authenticate,
+          logout,
           formatDateShort,
           formatDateFull,
           getCategoryIcon,
