@@ -1351,7 +1351,7 @@
         // Uses field masking for cost efficiency (only pay for fields requested)
         const GOOGLE_PLACES_API_KEY = 'AIzaSyBM9-JQBMBIyTpgSVZ8K4U_-LxKuZSyz5E';
 
-        const doSearch = async () => {
+        const doSearch = async (retryCount = 0) => {
           const query = placeSearch.value.trim();
           if (!query || query.length < 2) {
             placeResults.value = [];
@@ -1398,11 +1398,19 @@
 
           } catch (error) {
             console.error('Places search failed:', error);
+
+            // Auto-retry once on 403 (propagation delay)
+            if (error.status === 403 && retryCount < 1) {
+              console.log('Retrying search...');
+              setTimeout(() => doSearch(retryCount + 1), 1000);
+              return;
+            }
+
             placeResults.value = [];
 
             // Map error codes to user-friendly messages
             if (error.status === 403) {
-              placeSearchError.value = 'API request denied. Check API key or enable Places API (New).';
+              placeSearchError.value = 'API request denied. Please try again or check API settings.';
             } else if (error.status === 429) {
               placeSearchError.value = 'API quota exceeded. Try again later.';
             } else if (error.message) {
