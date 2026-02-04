@@ -437,6 +437,22 @@
     .reorder-btn {
       line-height: 1;
     }
+
+    /* Date input responsive fix */
+    input[type="date"] {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.6;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+    }
   </style>
 </head>
 
@@ -849,7 +865,7 @@
           <button @click="showDatePicker = false" class="text-ash hover:text-rust">[X]</button>
         </div>
         <div class="p-4">
-          <input v-model="newDate" type="date" class="w-full bg-void-dark border border-ash text-paper px-3 py-2 mb-4">
+          <input v-model="newDate" type="date" class="w-full bg-void-dark border border-ash text-paper px-3 py-2 mb-4 box-border">
           <button @click="addDate" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
             [ ADD ]
           </button>
@@ -874,7 +890,7 @@
           <!-- Change date -->
           <div>
             <label class="block text-ash text-sm mb-1">CHANGE_TO</label>
-            <input v-model="editingDateNew" type="date" class="w-full bg-void-dark border border-ash text-paper px-3 py-2">
+            <input v-model="editingDateNew" type="date" class="w-full bg-void-dark border border-ash text-paper px-3 py-2 box-border">
           </div>
 
           <button @click="saveDate" class="w-full border border-moss text-moss px-4 py-3 hover:bg-moss hover:text-void transition-colors">
