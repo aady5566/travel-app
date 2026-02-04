@@ -438,19 +438,22 @@
       line-height: 1;
     }
 
-    /* Date input responsive fix */
-    input[type="date"] {
+    /* Date & Time input responsive fix */
+    input[type="date"],
+    input[type="time"] {
       width: 100%;
       min-width: 0;
       max-width: 100%;
       -webkit-appearance: none;
       appearance: none;
     }
-    input[type="date"]::-webkit-calendar-picker-indicator {
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
       cursor: pointer;
       opacity: 0.6;
     }
-    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    input[type="date"]::-webkit-calendar-picker-indicator:hover,
+    input[type="time"]::-webkit-calendar-picker-indicator:hover {
       opacity: 1;
     }
   </style>
@@ -708,7 +711,7 @@
         <div class="p-4 space-y-4">
           <div>
             <label class="block text-ash text-sm mb-1">TIME</label>
-            <input v-model="activityForm.time" type="time" class="w-full bg-void-dark border border-ash text-paper px-3 py-2">
+            <input v-model="activityForm.time" type="time" class="w-full bg-void-dark border border-ash text-paper px-3 py-2 box-border">
           </div>
           <div>
             <label class="block text-ash text-sm mb-1">TITLE *</label>
